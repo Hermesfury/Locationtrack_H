@@ -1,0 +1,47 @@
+🔐 INCIDENT INVESTIGATION REPORT
+============================================================
+🕒 Server Time:     2025-09-07 18:40:52
+🕒 Client Time:     2025-09-08T01:40:50.023Z
+🌍 Public IP:       197.***.59.63
+📍 City:            Lagos
+📍 Country:         NG
+gMaps: https://www.google.com/maps?q=6.45**,3.39**
+
+🖥️ DEVICE & BROWSER
+----------------------------------------
+• OS:              Linux armv81
+• Browser:         Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome...
+• Screen:          360x806
+• Viewport:        [**0, 1813]
+• Language:        en-US
+• Timezone:        Africa/Lagos
+• WebGL:           True
+• Local Storage:   True
+• Online:          True
+
+📡 NETWORK DETECTION
+----------------------------------------
+• Network Type:    4g
+• RTT (Latency):   150 ms
+• Local IPs:       10.53.***.156
+
+🔍 LAN SCAN (Internal IPs)
+----------------------------------------
+  192.168.1.1 → timeout
+  10.0.0.1 → timeout
+  192.168.0.1 → timeout
+  172.16.0.1 → timeout
+
+📁 FILE SYSTEM HINTS
+----------------------------------------
+  /***.txt → exists
+  /.*** → exists
+  /.***/config → exists
+  /.***/id_rsa → exists
+
+📸 SCREENSHOT
+----------------------------------------
+• Saved as: reports/screenshot.png
+
+✅ This report was automatically saved to:
+   C:\Users\Hermes\Desktop\recon\reports\report.txt
