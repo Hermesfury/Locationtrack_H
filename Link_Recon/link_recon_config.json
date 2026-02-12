@@ -1,0 +1,48 @@
+{
+  "host": "0.0.0.0",
+  "port": 5000,
+  "use_https": false,
+  "cert_file": "cert.pem",
+  "key_file": "key.pem",
+  "rate_limit": 10,
+  "require_auth": false,
+  "auth_token": null,
+  "screenshot_full_page": true,
+  "lan_scan_timeout": 1.0,
+  "lan_scan_range": [
+    "192.168.1.1",
+    "10.0.0.1",
+    "192.168.0.1",
+    "172.16.0.1",
+    "192.168.2.1",
+    "10.0.0.138",
+    "192.168.1.254"
+  ],
+  "file_probes": [
+    "/robots.txt",
+    "/.env",
+    "/.git/config",
+    "/.ssh/id_rsa",
+    "/wp-config.php",
+    "/.htaccess",
+    "/config.php",
+    "/database.yml",
+    "/secrets.yml",
+    "/.aws/credentials"
+  ],
+  "geo_apis": [
+    "https://ipinfo.io/json",
+    "https://ipapi.co/json/",
+    "https://ip-api.com/json/"
+  ],
+  "enable_gps": true,
+  "gps_timeout": 10,
+  "gps_accuracy_threshold": 100,
+  "output_dir": "reports",
+  "export_json": true,
+  "export_csv": true,
+  "export_sqlite": true,
+  "max_reports": 1000,
+  "dashboard_port": 5001,
+  "enable_dashboard": true
+}
