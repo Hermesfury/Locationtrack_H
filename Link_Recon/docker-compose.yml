@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  link-recon:
+    build: .
+    ports:
+      - "5000:5000"
+      - "8443:8443"  # HTTPS port
+    volumes:
+      - ./reports:/app/reports
+      - ./link_recon_config.json:/app/link_recon_config.json:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp

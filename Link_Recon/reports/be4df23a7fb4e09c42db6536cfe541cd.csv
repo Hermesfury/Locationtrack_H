@@ -1,0 +1,2 @@
+report_id,timestamp,ip,city,country,os,browser,screen,timezone
+be4df23a7fb4e09c42db6536cfe541cd,2026-02-09T03:16:20.184Z,129.205.124.203,Lagos,NG,Linux armv81,"Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Sa",360x806,Africa/Lagos

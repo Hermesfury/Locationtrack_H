@@ -1,0 +1,56 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        cd Link_Recon
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        cd Link_Recon
+        python -m pytest tests.py -v
+
+    - name: Lint with flake8
+      run: |
+        cd Link_Recon
+        pip install flake8
+        flake8 infogather.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 infogather.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build Docker image
+      run: |
+        cd Link_Recon
+        docker build -t link-recon:test .
+
+    - name: Test Docker image
+      run: |
+        cd Link_Recon
+        docker run --rm -d --name link-recon-test -p 5000:5000 link-recon:test
+        sleep 5
+        curl -f http://localhost:5000 || exit 1
+        docker stop link-recon-test
